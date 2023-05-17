@@ -27,7 +27,7 @@ def hog(img):
     hist = np.hstack(hists)     # hist is a 64 bit vector
     return hist
 
-img = cv.imread(cv.samples.findFile('digits.png'),0)
+img = cv.imread(cv.samples.findFile('./src/images/digits.png'),0)
 if img is None:
     raise Exception("we need the digits.png image from samples/data here !")
 
