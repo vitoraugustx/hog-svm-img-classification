@@ -1,64 +1,33 @@
-#!/usr/bin/env python
-import cv2 as cv
 import numpy as np
+from sklearn import svm
+from utils import generate_data, extract_hog_features
 
-SZ=20
-bin_n = 16 # Number of 
+# Define o tamanho da imagem
+target_size = (256, 256)
 
-affine_flags = cv.WARP_INVERSE_MAP|cv.INTER_LINEAR
+# Gera os dados das imagens a partir do diretório "Train"
+train_directory = './src/images/PandasBears/Train'
+X_train, y_train = generate_data(train_directory, target_size)
 
-def deskew(img):
-    m = cv.moments(img)
-    if abs(m['mu02']) < 1e-2:
-        return img.copy()
-    skew = m['mu11']/m['mu02']
-    M = np.float32([[1, skew, -0.5*SZ*skew], [0, 1, 0]])
-    img = cv.warpAffine(img,M,(SZ, SZ),flags=affine_flags)
-    return img
+# Gera os dados das imagens a partir do diretório "Test"
+test_directory = './src/images/PandasBears/Test'
+X_test, y_test = generate_data(test_directory, target_size)
 
-def hog(img):
-    gx = cv.Sobel(img, cv.CV_32F, 1, 0)
-    gy = cv.Sobel(img, cv.CV_32F, 0, 1)
-    mag, ang = cv.cartToPolar(gx, gy)
-    bins = np.int32(bin_n*ang/(2*np.pi))    # quantizing binvalues in (0...16)
-    bin_cells = bins[:10,:10], bins[10:,:10], bins[:10,10:], bins[10:,10:]
-    mag_cells = mag[:10,:10], mag[10:,:10], mag[:10,10:], mag[10:,10:]
-    hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
-    hist = np.hstack(hists)     # hist is a 64 bit vector
-    return hist
+# Converte y_train e y_test para um array 1D
+y_train = np.argmax(y_train, axis=1)
+y_test = np.argmax(y_test, axis=1)
 
-img = cv.imread(cv.samples.findFile('./src/images/digits.png'),0)
-if img is None:
-    raise Exception("we need the digits.png image from samples/data here !")
+# Extrai as características HOG dos conjuntos de treinamento e teste
+X_train_hog = extract_hog_features(X_train)
+X_test_hog = extract_hog_features(X_test)
 
-cells = [np.hsplit(row,100) for row in np.vsplit(img,50)]
+# Definição e treinamento do classificador SVM radial
+classifier = svm.SVC(kernel='rbf', gamma=0.01)
+classifier.fit(X_train_hog, y_train)
 
-# First half is trainData, remaining is testData
-train_cells = [ i[:50] for i in cells ]
-test_cells = [ i[50:] for i in cells]
+# Classificação do conjunto de teste
+y_pred = classifier.predict(X_test_hog)
 
-#print(train_cells[0][0])
-#print(test_cells)
-
-deskewed = [list(map(deskew,row)) for row in train_cells]
-hogdata = [list(map(hog,row)) for row in deskewed]
-trainData = np.float32(hogdata).reshape(-1,64)
-responses = np.repeat(np.arange(10),250)[:,np.newaxis]
-
-svm = cv.ml.SVM_create()
-svm.setKernel(cv.ml.SVM_LINEAR)
-svm.setType(cv.ml.SVM_C_SVC)
-svm.setC(2.67)
-svm.setGamma(5.383)
-
-svm.train(trainData, cv.ml.ROW_SAMPLE, responses)
-svm.save('svm_data.dat')
-
-deskewed = [list(map(deskew,row)) for row in test_cells]
-hogdata = [list(map(hog,row)) for row in deskewed]
-testData = np.float32(hogdata).reshape(-1,bin_n*4)
-result = svm.predict(testData)[1]
-
-mask = result==responses
-correct = np.count_nonzero(mask)
-print(correct*100.0/result.size)
+# Calcula a acurácia
+accuracy = np.mean(y_pred == y_test)
+print("Acurácia no conjunto de teste:", accuracy * 100, "%")

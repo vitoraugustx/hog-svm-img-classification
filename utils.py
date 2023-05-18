@@ -1,26 +1,38 @@
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import numpy as np
+import cv2
+from skimage.feature import hog
 
-def load_image_data():
-    # Create a data generator
-    datagen_train = ImageDataGenerator()  
-    datagen_valid = ImageDataGenerator() # No need to augment validation data
+# Função para gerar os dados de treinamento e teste a partir das imagens
+def generate_data(directory, target_size):
+    datagen = ImageDataGenerator()
 
-    # Utilizando o método flow_from_directory() da biblioteca ImageDataGenerator
-    # Load and iterate training dataset
-    train_data = datagen_train.flow_from_directory(
-        #"/content/train_data/train/",
-        "./src/images/PandasBears/Train/",
-        target_size=(256, 256),
-        color_mode="grayscale",
-        class_mode="categorical",
+    generator = datagen.flow_from_directory(
+        directory,
+        target_size=target_size,
+        color_mode="rgb",
+        class_mode="categorical"
     )
+    
+    X = []
+    y = []
+    
+    for i in range(len(generator)):
+        images, labels = generator[i]
+        X.append(images)
+        y.append(labels)
+    
+    X = np.concatenate(X)
+    y = np.concatenate(y)
+    
+    return X, y
 
-    # Load and iterate validation dataset
-    valid_data = datagen_valid.flow_from_directory(
-        "./src/images/PandasBears/Test/",
-        target_size=(256, 256),
-        color_mode="grayscale",
-        class_mode="categorical",
-    )
-
-    return train_data, valid_data
+# Função para extrair as características HOG das imagens
+def extract_hog_features(X):
+    hog_features = []
+    for img in X:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        features = hog(gray, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2))
+        hog_features.append(features)
+    
+    return np.array(hog_features)
