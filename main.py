@@ -18,7 +18,8 @@ y_train = np.argmax(y_train, axis=1)
 y_test = np.argmax(y_test, axis=1)
 
 # Extrai as características HOG dos conjuntos de treinamento e teste
-X_train_hog = extract_hog_features(X_train)
+# Selecione visualize=True para visualizar as características HOG de algumas (n_visualizations) imagens
+X_train_hog = extract_hog_features(X_train, visualize=False, n_visualizations=4)
 X_test_hog = extract_hog_features(X_test)
 
 # Definição e treinamento do classificador SVM radial
