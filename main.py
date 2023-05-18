@@ -37,6 +37,9 @@ cells = [np.hsplit(row,100) for row in np.vsplit(img,50)]
 train_cells = [ i[:50] for i in cells ]
 test_cells = [ i[50:] for i in cells]
 
+#print(train_cells[0][0])
+#print(test_cells)
+
 deskewed = [list(map(deskew,row)) for row in train_cells]
 hogdata = [list(map(hog,row)) for row in deskewed]
 trainData = np.float32(hogdata).reshape(-1,64)
